@@ -31,6 +31,17 @@ final class HelmDi {
   /// application container.
   factory app() => _application ??= HelmDi();
 
+  /// A concise, idiomatic alias for [HelmDi.app].
+  ///
+  /// Prefer [HelmDi.app] in bootstrap code when making application ownership
+  /// explicit improves readability. [instance] is useful at integration
+  /// entry points that only need the already configured container.
+  static HelmDi get instance => HelmDi.app();
+
+  /// Short alias for [HelmDi.app] used by projects that adopt the `DI.I`
+  /// access convention.
+  static HelmDi get I => HelmDi.app();
+
   static HelmDi? _application;
 
   /// Disposes and clears the application container.

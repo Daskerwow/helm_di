@@ -15,6 +15,8 @@ void main() {
 
     test('app returns one explicit singleton per isolate', () {
       expect(identical(HelmDi.app(), HelmDi.app()), isTrue);
+      expect(identical(HelmDi.app(), HelmDi.instance), isTrue);
+      expect(identical(HelmDi.app(), HelmDi.I), isTrue);
     });
 
     test('ordinary constructors always create independent containers', () {
