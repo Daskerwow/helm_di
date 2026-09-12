@@ -46,11 +46,14 @@ final class HelmDi {
 
   static final Object _resolutionZoneKey = Object();
 
+  ///
   final HelmDi? _parent;
   final _registrations = <_ServiceId, _Registration>{};
   final _instances = <_ServiceId, _OwnedInstance>{};
   final _creationOrder = <_ServiceId>[];
   final _children = <HelmDi>[];
+
+  ///
   bool _sealed = false;
   bool _resolutionStarted = false;
   bool _disposing = false;
