@@ -12,9 +12,37 @@ part 'registration.dart';
 /// scopes. This prevents a late runtime mutation from silently changing which
 /// implementation production code receives.
 final class HelmDi {
-  HelmDi() : _parent = null;
+  /// Creates an independent container.
+  ///
+  /// Prefer this constructor for tests, isolated application graphs, and
+  /// temporary composition roots. It never reads or mutates [HelmDi.app].
+  new() : _parent = null;
 
-  HelmDi._(this._parent);
+  new _(this._parent);
+
+  /// Returns the process-wide application container for the current isolate.
+  ///
+  /// This is opt-in convenience for application entry points that have one
+  /// composition root. It deliberately has a named constructor so [HelmDi()]
+  /// remains suitable for tests and multiple independent graphs. Configure
+  /// this container exactly once, call [seal], then dispose it on shutdown.
+  ///
+  /// Static state is isolate-local: another Dart isolate receives its own
+  /// application container.
+  factory app() => _application ??= HelmDi();
+
+  static HelmDi? _application;
+
+  /// Disposes and clears the application container.
+  ///
+  /// This hook exists exclusively to isolate tests which use [HelmDi.app].
+  /// Application code should dispose the container it bootstrapped directly;
+  /// replacing a live application graph at runtime makes ownership ambiguous.
+  static Future<void> resetApplicationForTest() async {
+    final application = _application;
+    _application = null;
+    if (application != null) await application.dispose();
+  }
 
   static final Object _resolutionZoneKey = Object();
 

@@ -10,6 +10,36 @@ final class const _CycleA(final _CycleB bb);
 final class const _CycleB(final _CycleA a);
 
 void main() {
+  group('application container', () {
+    tearDown(HelmDi.resetApplicationForTest);
+
+    test('app returns one explicit singleton per isolate', () {
+      expect(identical(HelmDi.app(), HelmDi.app()), isTrue);
+    });
+
+    test('ordinary constructors always create independent containers', () {
+      expect(identical(HelmDi(), HelmDi()), isFalse);
+      expect(identical(HelmDi(), HelmDi.app()), isFalse);
+    });
+
+    test(
+      'test reset disposes the application container before replacing it',
+      () async {
+        var disposals = 0;
+        final first = HelmDi.app()
+          ..registerSingleton<String>(
+            'application',
+            dispose: syncDisposer((_) => disposals++),
+          );
+
+        await HelmDi.resetApplicationForTest();
+
+        expect(disposals, 1);
+        expect(identical(first, HelmDi.app()), isFalse);
+      },
+    );
+  });
+
   group('registration and lookup', () {
     test('factory creates a distinct caller-owned object every time', () {
       final di = HelmDi()..registerFactory<_Session>((_) => _Session(1));

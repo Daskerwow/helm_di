@@ -24,6 +24,20 @@ final router = AppRouter(newsApi: di.get<NewsApi>());
 await di.dispose();
 ```
 
+## Application singleton
+
+`HelmDi()` always creates an independent container. For an application with
+exactly one composition root, opt into an isolate-local singleton explicitly:
+
+```dart
+final di = HelmDi.app();
+// Register the graph once, then call di.seal().
+```
+
+`HelmDi.app()` must be configured during bootstrap and disposed at application
+shutdown like any other container. `resetApplicationForTest()` clears it only
+for test isolation; application code should not replace a live graph.
+
 ## Lifetimes
 
 - `registerSingleton`: one instance owned by the scope that registered it.
