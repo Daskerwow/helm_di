@@ -20,8 +20,8 @@ final class const _ServiceId(final Type type, [final String? name]) {
 /// this storage layer uses `Object?`, never `dynamic`. Instance caches live in
 /// scopes instead of here, which keeps scoped lifetime ownership explicit.
 final class const _Registration({
-  required final ServiceLifetime lifetime,
   required final Object? Function(HelmDi di) factory,
+  required final ServiceLifetime lifetime,
   final Future<void> Function(Object? value)? dispose,
 });
 
