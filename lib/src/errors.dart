@@ -45,3 +45,24 @@ final class CircularDependencyException(List<String> path)
     extends HelmDiException {
   this : super('Circular dependency detected: ${path.join(' -> ')}.');
 }
+
+/// Thrown when a dependency is resolved after the [HelmDi.get] call that
+/// started its resolution has already returned.
+///
+/// [DependencyFactory] is synchronous by contract: this fires when a
+/// factory hands work to a `Future`, `Future.microtask`, `Timer`, or
+/// similar callback that later calls back into [HelmDi.get] from the same
+/// zone. By then the cycle-detection path has already been torn down, so
+/// continuing would silently make circular-dependency detection unreliable
+/// instead of failing clearly.
+final class const AsynchronousResolutionException() extends HelmDiException {
+  this
+    : super(
+        'A dependency factory attempted to resolve another dependency '
+        'after the HelmDi.get() call that started it had already '
+        'returned. DependencyFactory must complete synchronously: move '
+        'asynchronous work to an explicit application bootstrap step '
+        'instead of resolving dependencies from a Future, '
+        'Future.microtask, Timer, or similar callback.',
+      );
+}

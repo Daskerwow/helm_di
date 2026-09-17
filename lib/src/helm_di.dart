@@ -117,18 +117,19 @@ final class HelmDi {
   }
 
   /// Registers an eagerly-created singleton owned by this scope.
+  ///
+  /// The instance is already created, so it is stored directly via
+  /// [_storeOwnedInstance] and [_getOrCreate] never runs for it; the
+  /// registration itself therefore carries no [dispose] of its own,
+  /// keeping the single disposer below the only source of truth for how
+  /// this instance is torn down.
   void registerSingleton<T>(
     T instance, {
     ServiceKey<T>? key,
     DependencyDisposer<T>? dispose,
   }) {
     final id = _id<T>(key);
-    _register<T>(
-      id,
-      lifetime: .singleton,
-      factory: (_) => instance,
-      dispose: dispose,
-    );
+    _register<T>(id, lifetime: .singleton, factory: (_) => instance);
     _storeOwnedInstance(id, instance, () async {
       if (dispose != null) await dispose(instance);
     });
@@ -179,10 +180,18 @@ final class HelmDi {
     if (context != null) return _resolve<T>(_id<T>(key), context);
 
     final newContext = _ResolutionContext();
-    return runZoned(
-      () => _resolve<T>(_id<T>(key), newContext),
-      zoneValues: {_resolutionZoneKey: newContext},
-    );
+    try {
+      return runZoned(
+        () => _resolve<T>(_id<T>(key), newContext),
+        zoneValues: {_resolutionZoneKey: newContext},
+      );
+    } finally {
+      // By the time this outer get() returns, every entered node has been
+      // left (see _create's try/finally), so the path is empty here. Any
+      // later call to enter() on this context can only come from a
+      // callback that escaped synchronous execution.
+      newContext._closed = true;
+    }
   }
 
   /// Returns `true` when this scope or an ancestor has a matching service.
@@ -235,7 +244,9 @@ final class HelmDi {
   T _resolve<T>(_ServiceId id, _ResolutionContext context) {
     final located = _locate(id);
     if (located == null) throw DependencyNotFoundException('$id');
-    located.owner._ensureActive();
+    // No need to re-check located.owner here: get<T> already called
+    // _ensureActive() on `this`, which recurses through every ancestor up
+    // to the root, and owner is always `this` or one of those ancestors.
 
     final registration = located.registration;
     return switch (registration.lifetime) {
@@ -338,7 +349,12 @@ final class const _LocatedRegistration(
 final class _ResolutionContext {
   final _path = <_ResolutionNode>[];
 
+  /// Set once the [HelmDi.get] call that created this context has
+  /// returned. See [AsynchronousResolutionException].
+  bool _closed = false;
+
   void enter(_ResolutionNode node) {
+    if (_closed) throw const AsynchronousResolutionException();
     final cycleStart = _path.indexOf(node);
     if (cycleStart >= 0) {
       final cycle = [
